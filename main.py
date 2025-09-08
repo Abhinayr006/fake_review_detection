@@ -1,5 +1,9 @@
 # main.py
 
+import nltk
+nltk.download('stopwords')
+nltk.download('wordnet')
+
 from data_preprocessing import load_and_preprocess_data, create_tfidf_features
 from model_training import train_model, evaluate_model, save_model
 from prediction import load_assets, predict_fake_review
