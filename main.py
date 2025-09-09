@@ -36,10 +36,19 @@ def evaluate_model(model, X_test, y_test):
     y_pred_proba = None
     if hasattr(model, "predict_proba"):
         y_pred_proba = model.predict_proba(X_test)[:, 1]
+    
     print("\n--- Model Performance on Test Set ---")
     print(f"Accuracy: {accuracy_score(y_test, y_pred):.4f}")
     print("\nClassification Report:")
     print(classification_report(y_test, y_pred))
+    
+    # Calculate and print Confusion Matrix and ROC-AUC
+    print("\nConfusion Matrix:")
+    print(confusion_matrix(y_test, y_pred))
+    
+    if y_pred_proba is not None:
+        roc_auc = roc_auc_score(y_test, y_pred_proba)
+        print(f"\nROC AUC Score: {roc_auc:.4f}")
 
 def sample_and_predict(model, X_test_df, X_test_hybrid, y_test, n_samples=10):
     """
@@ -64,7 +73,7 @@ def sample_and_predict(model, X_test_df, X_test_hybrid, y_test, n_samples=10):
     # Print the results
     for i in range(n_samples):
         print(f"\nReview {i+1}:")
-        print(f"Text: {sample_X_text.iloc[i][:150]}...") # Truncate for readability
+        print(f"Text: {sample_X_text.iloc[i]}")
         print(f"Actual Label: {'Deceptive' if sample_y.iloc[i] == 1 else 'Genuine'}")
         print(f"Predicted Label: {'Deceptive' if sample_preds[i] == 1 else 'Genuine'}")
 

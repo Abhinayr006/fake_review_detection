@@ -6,10 +6,27 @@ import numpy as np
 import re
 from nltk.sentiment import SentimentIntensityAnalyzer
 
-def load_yelp_data(review_path, user_path, num_reviews=500000):
+def load_yelp_data(review_path, user_path, num_reviews=600000):
     """
     Loads a limited number of reviews and user data from the Yelp dataset
     to create a comprehensive dataframe with both textual and behavioral features.
+
+    This function performs the following steps:
+    1. Loads user data and extracts behavioral features such as review count, average stars, elite status, friends count, fans, and compliments.
+    2. Loads review data, sampling up to `num_reviews` entries.
+    3. Merges review data with user behavioral features.
+    4. Extracts advanced features including sentiment scores, number of sentences, and average word length.
+    5. Applies heuristic rules to label reviews as deceptive or genuine based on textual and behavioral patterns.
+    6. Balances the dataset by sampling genuine reviews to match the number of deceptive reviews.
+    7. Returns the processed DataFrame ready for model training.
+
+    Parameters:
+    - review_path (str): Path to the Yelp review JSON file.
+    - user_path (str): Path to the Yelp user JSON file.
+    - num_reviews (int): Maximum number of reviews to load.
+
+    Returns:
+    - pd.DataFrame: Processed DataFrame with features and labels.
     """
     print("Loading user data...")
     user_data = {}
