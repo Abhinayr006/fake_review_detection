@@ -4,6 +4,7 @@ import pandas as pd
 import json
 import numpy as np
 import re
+from nltk.sentiment import SentimentIntensityAnalyzer
 
 def load_yelp_data(review_path, user_path, num_reviews=500000):
     """
@@ -50,13 +51,44 @@ def load_yelp_data(review_path, user_path, num_reviews=500000):
     df['user_friends'] = df['user_features'].apply(lambda x: x['user_friends'])
     df['user_fans'] = df['user_features'].apply(lambda x: x['user_fans'])
     df['user_compliment_count'] = df['user_features'].apply(lambda x: x['user_compliment_count'])
-    
+
+    # Advanced feature engineering
+    sia = SentimentIntensityAnalyzer()
+    df['sentiment'] = df['text'].apply(lambda x: sia.polarity_scores(x)['compound'])
+    df['num_sentences'] = df['text'].apply(lambda x: len(re.split(r'[.!?]+', x)))
+    df['avg_word_length'] = df['text'].apply(lambda x: np.mean([len(word) for word in x.split()]) if x.split() else 0)
+
     df.drop(columns=['user_features', 'user_id', 'business_id', 'date', 'review_id'], inplace=True)
     
-    # --- New Heuristic for Labeling (does not use training features) ---
+    # --- Improved Heuristic for Labeling (does not use training features) ---
     df['deceptive'] = 0
+
+    # Original heuristics
     df.loc[(df['stars'].isin([1, 5])) & (df['review_length'] < 10), 'deceptive'] = 1
     df.loc[df['text'].str.contains('best ever', case=False) & (df['stars'] == 5), 'deceptive'] = 1
+
+    # Additional heuristics for better detection
+    # Excessive punctuation
+    df.loc[df['text'].str.count('!') > 5, 'deceptive'] = 1
+    df.loc[df['text'].str.count('\\?') > 3, 'deceptive'] = 1
+
+    # All caps words (more than 30% of words are all caps)
+    df['caps_ratio'] = df['text'].apply(lambda x: sum(1 for word in x.split() if word.isupper() and len(word) > 1) / len(x.split()) if len(x.split()) > 0 else 0)
+    df.loc[df['caps_ratio'] > 0.3, 'deceptive'] = 1
+
+    # Suspicious phrases with high stars and short length
+    suspicious_phrases = ['amazing', 'incredible', 'perfect', 'fantastic', 'awesome', 'love it', 'best place ever']
+    for phrase in suspicious_phrases:
+        df.loc[df['text'].str.contains(phrase, case=False) & (df['stars'] == 5) & (df['review_length'] < 15), 'deceptive'] = 1
+
+    # Low user activity but high stars
+    df.loc[(df['user_review_count'] < 5) & (df['stars'] == 5) & (df['review_length'] < 20), 'deceptive'] = 1
+
+    # Very short reviews with extreme ratings
+    df.loc[(df['stars'].isin([1, 5])) & (df['review_length'] < 5), 'deceptive'] = 1
+
+    # Drop the temporary caps_ratio column
+    df.drop(columns=['caps_ratio'], inplace=True)
     
     df_deceptive = df[df['deceptive'] == 1]
     df_genuine = df[df['deceptive'] == 0]

@@ -4,7 +4,7 @@ import pandas as pd
 from sklearn.model_selection import train_test_split, cross_val_score, GridSearchCV
 from sklearn.ensemble import RandomForestClassifier
 from scipy.sparse import hstack
-from sklearn.metrics import accuracy_score, classification_report, make_scorer
+from sklearn.metrics import accuracy_score, classification_report, make_scorer, confusion_matrix, roc_auc_score
 import pickle
 import numpy as np
 
@@ -33,6 +33,9 @@ def evaluate_model(model, X_test, y_test):
     Evaluates the model and prints the performance metrics.
     """
     y_pred = model.predict(X_test)
+    y_pred_proba = None
+    if hasattr(model, "predict_proba"):
+        y_pred_proba = model.predict_proba(X_test)[:, 1]
     print("\n--- Model Performance on Test Set ---")
     print(f"Accuracy: {accuracy_score(y_test, y_pred):.4f}")
     print("\nClassification Report:")
@@ -114,19 +117,28 @@ def main():
         X_train_hybrid = hstack([X_train_text, X_train_behavioral.values])
         X_test_hybrid = hstack([X_test_text, X_test_behavioral.values])
 
-        # Overfitting Mitigation: Cross-Validation
-        print("Performing 5-fold cross-validation to assess model stability...")
-        hybrid_model = RandomForestClassifier(n_estimators=100, random_state=42, n_jobs=-1)
+        # Hyperparameter Tuning with GridSearchCV
+        print("Performing hyperparameter tuning for Random Forest...")
+        param_grid = {
+            'n_estimators': [100, 200],
+            'max_depth': [None, 10, 20],
+            'min_samples_split': [2, 5],
+            'min_samples_leaf': [1, 2]
+        }
+        grid_search = GridSearchCV(
+            estimator=RandomForestClassifier(random_state=42, n_jobs=-1),
+            param_grid=param_grid,
+            cv=3,
+            scoring='accuracy',
+            n_jobs=-1
+        )
+        grid_search.fit(X_train_hybrid, y_train)
         
-        scorer = make_scorer(accuracy_score)
-        cv_scores = cross_val_score(hybrid_model, X_train_hybrid, y_train, cv=5, scoring=scorer, n_jobs=-1)
+        print(f"Best parameters: {grid_search.best_params_}")
+        print(f"Best cross-validation score: {grid_search.best_score_:.4f}")
         
-        print(f"Cross-validation scores: {cv_scores}")
-        print(f"Average CV Accuracy: {cv_scores.mean():.4f} (+/- {cv_scores.std() * 2:.4f})")
-        
-        # Train the final model on the entire training set
-        print("Training final model on the full training set...")
-        hybrid_model.fit(X_train_hybrid, y_train)
+        # Use the best model
+        hybrid_model = grid_search.best_estimator_
 
         # Step 4: Evaluate the model
         evaluate_model(hybrid_model, X_test_hybrid, y_test)

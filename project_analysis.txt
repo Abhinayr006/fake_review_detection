@@ -1,0 +1,116 @@
+# Project Analysis: Fake Review Detection
+
+## Project Overview
+This project is a machine learning-based system for detecting fake reviews. It supports two datasets: the Deceptive Opinion dataset and the Yelp Academic Dataset. The system uses a hybrid approach combining textual features (TF-IDF) with behavioral features (e.g., user review count, stars) to train a Random Forest classifier. The project includes data preprocessing, model training, evaluation, and prediction modules.
+
+## File Analysis
+
+### 1. main.py
+- **Purpose**: Main entry point for the fake review detection pipeline.
+- **Key Features**:
+  - Configurable dataset selection ('deceptive_opinion' or 'yelp').
+  - Supports hybrid model training using Random Forest.
+  - Includes data loading, preprocessing, feature extraction, training, evaluation, and saving.
+  - Performs cross-validation for overfitting mitigation.
+  - Provides sample predictions for manual review.
+- **Dependencies**: Imports from data_preprocessing, data_preprocessing_yelp, model_training.
+- **Configuration**: Paths to data files, model paths, model and dataset choices.
+- **Output**: Trained model and TF-IDF vectorizer saved as .pkl files.
+
+### 2. data_preprocessing.py
+- **Purpose**: Handles text preprocessing and feature extraction for the Deceptive Opinion dataset.
+- **Key Functions**:
+  - `preprocess_text(text)`: Cleans text by lowercasing, removing punctuation, stop words, and lemmatizing.
+  - `create_tfidf_features(X_train, X_test)`: Creates TF-IDF features using scikit-learn's TfidfVectorizer.
+  - `load_and_preprocess_data(file_path)`: Loads CSV, preprocesses text, maps labels, and splits data.
+- **Dependencies**: Uses NLTK for stopwords and lemmatization, pandas, sklearn.
+- **Notes**: Specifically for the deceptive-opinion.csv dataset.
+
+### 3. data_preprocessing_yelp.py
+- **Purpose**: Loads and preprocesses the Yelp Academic Dataset, merging review and user data.
+- **Key Features**:
+  - Loads user data from JSON to extract behavioral features (review count, average stars, elite status, etc.).
+  - Samples reviews (default 500,000) and merges with user features.
+  - Heuristic labeling for deceptive reviews based on stars, review length, and text patterns.
+  - Balances dataset by sampling genuine reviews to match deceptive ones.
+- **Dependencies**: Uses json, pandas, numpy.
+- **Output**: DataFrame with textual and behavioral features, labeled as deceptive (1) or genuine (0).
+
+### 4. model_training.py
+- **Purpose**: Contains functions for training, evaluating, and saving the model.
+- **Key Functions**:
+  - `train_model(X_train, y_train)`: Trains Logistic Regression model.
+  - `evaluate_model(model, X_test, y_test)`: Prints accuracy and classification report.
+  - `save_model(model, file_path)`: Saves model using pickle.
+- **Dependencies**: sklearn, pickle.
+- **Notes**: Although named model_training, it uses Logistic Regression, but main.py uses Random Forest for hybrid model.
+
+### 5. prediction.py
+- **Purpose**: Module for making predictions on new review texts using the trained model.
+- **Key Functions**:
+  - `load_assets(model_path, vectorizer_path)`: Loads saved model and vectorizer.
+  - `predict_fake_review(review_text, model, vectorizer)`: Preprocesses text, vectorizes, predicts, and returns human-readable result.
+- **Dependencies**: pickle, data_preprocessing for text cleaning.
+- **Notes**: Designed for single review prediction.
+
+### 6. requirements.txt
+- **Purpose**: Lists Python dependencies for the project.
+- **Contents**:
+  - pandas: Data manipulation.
+  - scikit-learn: Machine learning algorithms and feature extraction.
+  - nltk: Natural language processing (stopwords, lemmatizer).
+- **Notes**: Minimal dependencies; NLTK data (e.g., stopwords) may need to be downloaded separately.
+
+### 7. .gitignore
+- **Purpose**: Specifies files and directories to ignore in Git version control.
+- **Ignored Items**:
+  - __pycache__/, *.pyc: Python bytecode.
+  - venv/, .myenv/: Virtual environments.
+  - *.pkl: Saved models and vectorizers.
+  - data/: Data files (large and potentially sensitive).
+  - nltk_data/: NLTK downloaded data.
+- **Notes**: Prevents large or generated files from being committed.
+
+### 8. README.md
+- **Purpose**: Project documentation file.
+- **Current Status**: Empty.
+- **Notes**: Should contain project description, installation, usage, etc.
+
+### 9. __init__.py
+- **Purpose**: Marks the directory as a Python package.
+- **Current Status**: Empty.
+- **Notes**: No package-level initialization code.
+
+### 10. Data Directory (data/)
+- **Contents**:
+  - deceptive-opinion.csv: Dataset with deceptive and truthful reviews.
+  - yelp_json/: Directory for Yelp dataset files.
+    - Yelp-JSON/: Subdirectory.
+      - __MACOSX/: MacOS metadata.
+      - Yelp JSON/: Subdirectory containing yelp_dataset/.
+        - yelp_dataset/: Contains the Yelp Academic Dataset JSON files.
+          - yelp_academic_dataset_business.json
+          - yelp_academic_dataset_checkin.json
+          - yelp_academic_dataset_review.json
+          - yelp_academic_dataset_tip.json
+          - yelp_academic_dataset_user.json
+          - Dataset_User_Agreement.pdf
+- **Notes**: The Yelp JSON files are present at the expected locations as per the paths in main.py.
+
+### 11. Generated Files (not in repository)
+- hybrid_model.pkl: Trained Random Forest model.
+- tfidf_vectorizer.pkl: TF-IDF vectorizer.
+- logistic_regression_model.pkl: Logistic Regression model (possibly from previous runs).
+- __pycache__/: Compiled Python files.
+- .git/: Git repository data.
+- .myenv/: Virtual environment.
+
+## Summary
+This is a well-structured project for fake review detection using machine learning. It demonstrates good practices like modular code, cross-validation, and feature engineering. The hybrid approach combining textual and behavioral features is innovative. However, the Yelp dataset files are missing, and the README is empty. The project could benefit from a proper README, unit tests, and possibly a web interface for predictions.
+
+## Recommendations
+- Add the missing Yelp dataset files or update paths.
+- Populate README.md with installation and usage instructions.
+- Add error handling and logging.
+- Consider using a configuration file for paths and parameters.
+- Add unit tests in test.py (currently empty).
