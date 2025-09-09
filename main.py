@@ -1,11 +1,12 @@
 # main.py
 
 import pandas as pd
-from sklearn.model_selection import train_test_split, cross_val_score
+from sklearn.model_selection import train_test_split, cross_val_score, GridSearchCV
 from sklearn.ensemble import RandomForestClassifier
 from scipy.sparse import hstack
 from sklearn.metrics import accuracy_score, classification_report, make_scorer
 import pickle
+import numpy as np
 
 # Import our custom modules
 from data_preprocessing import preprocess_text, create_tfidf_features
@@ -37,6 +38,33 @@ def evaluate_model(model, X_test, y_test):
     print("\nClassification Report:")
     print(classification_report(y_test, y_pred))
 
+def sample_and_predict(model, X_test_df, X_test_hybrid, y_test, n_samples=10):
+    """
+    Takes a random sample of the test set, makes predictions, and prints the results.
+    """
+    print("\n--- Manual Review of Sample Predictions ---")
+    # Reset index for clean slicing
+    X_test_df = X_test_df.reset_index(drop=True)
+    X_test_hybrid = X_test_hybrid.tocsr() # Convert to CSR for slicing
+
+    # Get a random sample of indices from the test set
+    sample_indices = np.random.choice(len(X_test_df), n_samples, replace=False)
+    
+    # Get the sample data
+    sample_X_text = X_test_df.loc[sample_indices, 'text']
+    sample_X_hybrid = X_test_hybrid[sample_indices]
+    sample_y = y_test.reset_index(drop=True).loc[sample_indices]
+    
+    # Make predictions on the sample
+    sample_preds = model.predict(sample_X_hybrid)
+    
+    # Print the results
+    for i in range(n_samples):
+        print(f"\nReview {i+1}:")
+        print(f"Text: {sample_X_text.iloc[i][:150]}...") # Truncate for readability
+        print(f"Actual Label: {'Deceptive' if sample_y.iloc[i] == 1 else 'Genuine'}")
+        print(f"Predicted Label: {'Deceptive' if sample_preds[i] == 1 else 'Genuine'}")
+
 
 def main():
     """
@@ -50,21 +78,20 @@ def main():
         df = pd.read_csv(DATA_PATH_DECEPTIVE)
         df['cleaned_text'] = df['text'].apply(preprocess_text)
         df['deceptive'] = df['deceptive'].map({'deceptive': 1, 'truthful': 0})
-        X = df.drop(columns=['deceptive', 'text', 'hotel', 'polarity', 'source'])
-        y = df['deceptive']
     
     elif DATASET_TO_USE == 'yelp':
         print("1. Loading and preprocessing data from the Yelp dataset...")
         df = load_yelp_data(DATA_PATH_YELP_REVIEW, DATA_PATH_YELP_USER)
         df['cleaned_text'] = df['text'].apply(preprocess_text)
-        X = df.drop(columns=['deceptive', 'text'])
-        y = df['deceptive']
     
     else:
         raise ValueError("Invalid dataset selected. Choose 'deceptive_opinion' or 'yelp'.")
 
     # Step 2: Split the data into training and testing sets
     print("2. Splitting data into training and testing sets...")
+    # Keep the 'text' and 'cleaned_text' columns in X for the sample_and_predict function
+    X = df.drop(columns=['deceptive'])
+    y = df['deceptive']
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
 
     # Step 3: Handle Hybrid Model Training
@@ -104,8 +131,11 @@ def main():
         # Step 4: Evaluate the model
         evaluate_model(hybrid_model, X_test_hybrid, y_test)
         
-        # Step 5: Save the trained model and vectorizer
-        print("5. Saving the model and vectorizer...")
+        # Step 5: Sample and predict
+        sample_and_predict(hybrid_model, X_test, X_test_hybrid, y_test, n_samples=10)
+
+        # Step 6: Save the trained model and vectorizer
+        print("6. Saving the model and vectorizer...")
         save_model(hybrid_model, HYBRID_MODEL_PATH)
         save_model(tfidf_vectorizer, TFIDF_VECTORIZER_PATH)
         print(f"Model and vectorizer saved to {HYBRID_MODEL_PATH} and {TFIDF_VECTORIZER_PATH}")

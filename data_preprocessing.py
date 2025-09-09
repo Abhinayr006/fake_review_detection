@@ -8,12 +8,6 @@ from nltk.stem import WordNetLemmatizer
 from sklearn.model_selection import train_test_split
 from sklearn.feature_extraction.text import TfidfVectorizer
 
-# Make sure you have downloaded the necessary NLTK data before running this
-# import nltk
-# nltk.download('stopwords')
-# nltk.download('wordnet')
-# nltk.download('omw-1.4') # Required for wordnet lemmatizer
-
 def preprocess_text(text):
     """
     Cleans and tokenizes text data.
