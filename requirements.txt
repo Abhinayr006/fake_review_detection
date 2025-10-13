@@ -1,0 +1,13 @@
+pandas
+scikit-learn
+nltk
+numpy
+scipy
+streamlit
+matplotlib
+seaborn
+wordcloud
+transformers
+torch
+datasets
+# Removed pickle5 due to build errors on Python 3.12

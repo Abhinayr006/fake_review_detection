@@ -1,0 +1,33 @@
+# ---------------------------------------------------
+# 1. GENERATED FILES AND TRAINED MODELS (Mandatory to Ignore)
+# ---------------------------------------------------
+# Ignores all model, vectorizer, and tokenizer files (output of training)
+*.pkl
+*.pth
+*.json
+/model_metrics.json
+/hybrid_model.pkl
+/tfidf_vectorizer.pkl
+/distilbert_model.pth
+/distilbert_tokenizer.pkl
+
+# ---------------------------------------------------
+# 2. DATASETS (CRUCIAL for large files)
+# ---------------------------------------------------
+# Ignores all dataset folders and large raw files
+data/
+
+# ---------------------------------------------------
+# 3. PYTHON ENVIRONMENT & BUILD ARTIFACTS
+# ---------------------------------------------------
+# Virtual environment directories
+venv/
+.myenv/
+
+# Python compiled files
+__pycache__/
+*.pyc
+
+# IDE/Editor files (VS Code, Jupyter)
+.vscode/
+.ipynb_checkpoints/
