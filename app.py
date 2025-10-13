@@ -145,13 +145,8 @@ with col2:
     user_fans = st.slider("User Fans Count", 0, 200, 3, help="Number of fans this user has")
     user_compliment_count = st.slider("User Compliments", 0, 100, 8, help="Total compliments received by this user")
 
-# Calculate derived features
+# Prepare behavioral features in the correct order (only impactful features)
 review_length = len(review_text.split()) if review_text else 0
-sentiment = stars / 5.0  # Simple sentiment based on stars
-num_sentences = len([s for s in review_text.split('.') if s.strip()]) if review_text else 0
-avg_word_length = np.mean([len(word) for word in review_text.split()]) if review_text else 0
-
-# Prepare behavioral features in the correct order
 behavioral_features = [
     user_review_count,
     user_average_stars,
