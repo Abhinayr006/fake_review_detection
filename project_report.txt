@@ -20,10 +20,14 @@ Each review in the dataset contains:
 - **user_id**: Unique identifier for the reviewer
 - **business_id**: Unique identifier for the business
 - **date**: When the review was posted
+- **useful**: Number of users who found the review useful
+- **funny**: Number of users who found the review funny
+- **cool**: Number of users who found the review cool
 
 Each user profile contains:
-- **review_count**: Total number of reviews written
-- **average_stars**: User's average rating across all reviews
+- **user_id**: Unique user identifier
+- **review_count**: Total number of reviews written by this user
+- **average_stars**: User's average star rating across all reviews
 - **elite**: Years the user had elite status (premium membership)
 - **friends**: List of friend user IDs
 - **fans**: Number of users who follow this user
@@ -45,11 +49,21 @@ We extract 7 behavioral features from the user data that help identify suspiciou
 6. **user_fans**: Number of fans/followers this user has (from user.fans)
 7. **user_compliment_count**: Total compliments received (sum of all compliment types from user data)
 
-### Step 3: Labeling Reviews
-We use heuristic rules to label reviews as deceptive or genuine:
-- Reviews with 1 or 5 stars AND less than 10 words are marked as deceptive
-- Reviews with 5 stars containing "best ever" are marked as deceptive
-- All other reviews are considered genuine
+### Step 3: Enhanced Labeling Reviews (Updated Heuristics)
+We use advanced heuristic rules with 8 categories to label reviews as deceptive or genuine, significantly increasing deceptive samples from ~0.18% to ~28.38%:
+
+#### Deceptive Categories:
+1. **Extreme Language**: Reviews with repetitive positive words ("awesome", "amazing", "fantastic") with high stars
+2. **Over-Promotion**: Reviews containing phrases like "best ever", "highly recommend" with 5 stars
+3. **Short/Generic Text**: Reviews with 1 or 5 stars AND less than 10 words
+4. **Time-Based Duplicates**: Reviews posted at similar times with identical text patterns
+5. **Unnatural Punctuation/Caps**: Excessive use of exclamation marks, ALL CAPS text, or unusual punctuation
+6. **Negative Sentiment with High Stars**: Reviews with negative words but 4-5 stars
+7. **Overly Negative with Low Stars**: Reviews with extreme negative language but only 1-2 stars
+8. **Keyword Stuffing**: Excessive repetition of positive/negative words (more than 5 occurrences)
+
+#### Genuine Reinforcement:
+- Reviews with moderate length (>50 words), positive sentiment (>0.2), and moderate stars (2-4) are reinforced as genuine
 
 ### Step 4: Balancing Dataset
 We create a balanced dataset by sampling equal numbers of deceptive and genuine reviews to avoid bias in training.
@@ -120,9 +134,17 @@ The Random Forest uses 14 features:
 ## Model Training and Evaluation
 
 ### Training Setup
-- **Multi-modal**: Trained on 1,822 balanced samples (911 deceptive + 911 genuine)
-- **Random Forest**: Trained on 5,638 samples
+- **Multi-modal**: Currently training on 283,830 balanced samples (141,915 deceptive + 141,915 genuine) from 500,000 reviews
+- **Random Forest**: Previously trained on 5,638 samples
 - Both models use 80/20 train/validation split
+- Current training uses CUDA GPU acceleration for faster processing
+
+### What is CUDA?
+CUDA (Compute Unified Device Architecture) is NVIDIA's parallel computing platform and programming model that enables dramatic increases in computing performance by harnessing the power of GPU (Graphics Processing Unit). In machine learning:
+- **GPU Acceleration**: GPUs have thousands of cores optimized for parallel processing, making them much faster than CPUs for matrix operations common in deep learning
+- **Training Speed**: What would take hours on CPU can complete in minutes on GPU
+- **Memory**: GPUs have dedicated high-bandwidth memory for faster data transfer
+- **Current Setup**: Training is running on CUDA-enabled GPU with batch processing for optimal performance
 
 ### Evaluation Metrics
 
@@ -156,7 +178,18 @@ A table showing:
 
 ### Training Results
 
-**Multi-Modal Model**:
+**Multi-Modal Model (Latest Results - 10k reviews, enhanced heuristics)**:
+- **Accuracy**: 83.64%
+- **ROC-AUC**: 92.49%
+- **Precision**: 84.13% (macro average)
+- **Recall**: 83.63% (macro average)
+- **F1-Score**: 83.57% (macro average)
+- Training completed in ~7 minutes on GPU (6 epochs, early stopping)
+- Best validation accuracy: 87.09% at epoch 3
+- Confusion Matrix: [[426, 123], [57, 494]] (True Positives/Negatives well balanced)
+- Trained on 5,498 balanced samples (2,749 deceptive + 2,749 genuine from 10k reviews)
+
+**Multi-Modal Model (Previous Results - 1.8k samples)**:
 - Accuracy: 96.71%
 - ROC-AUC: 98.40%
 - Trained on CPU for ~4 hours
@@ -199,47 +232,90 @@ A table showing:
 - **json**: Data serialization
 
 ### File Structure
-- **data_preprocessing_yelp.py**: Data loading and feature extraction
-- **multi_modal_model.py**: Multi-modal model architecture and training
+- **data_preprocessing_yelp.py**: Data loading and feature extraction with enhanced 8-category heuristics
+- **multi_modal_model.py**: Multi-modal model architecture and training (DistilBERT + behavioral features)
 - **random_forest_model.py**: Random Forest implementation
 - **prediction.py**: Prediction functions for both models
 - **app.py**: Multi-modal Streamlit interface
 - **rf_app.py**: Random Forest Streamlit interface
-- **train_multi_modal.py**: Training script for multi-modal model
+- **train_multi_modal.py**: Training script for multi-modal model (currently running on 500k reviews)
+- **count_deceptive.py**: Script to count deceptive labels before balancing (28.38% deceptive in 500k reviews)
+- **test_heuristics.py**: Small-scale testing of enhanced labeling heuristics
+- **dataset_details.txt**: Comprehensive dataset information and statistics
+- **requirements.txt**: Python dependencies including textblob for sentiment analysis
+- **project_report.txt**: This detailed project documentation
 
 ### Key Challenges Solved
-1. **Class Imbalance**: Used balanced sampling to ensure equal deceptive/genuine reviews
-2. **Feature Engineering**: Extracted meaningful behavioral features from user profiles
-3. **Model Architecture**: Designed attention-based fusion for multi-modal learning
-4. **Performance Optimization**: Used DistilBERT instead of full BERT, removed BatchNorm
-5. **Web Deployment**: Created user-friendly interfaces with Streamlit
+1. **Class Imbalance**: Enhanced heuristics increased deceptive samples from 0.18% to 28.38%
+2. **Feature Engineering**: Extracted 7 behavioral features + sentiment analysis for better detection
+3. **Model Architecture**: Designed attention-based fusion for multi-modal learning with CUDA acceleration
+4. **Performance Optimization**: Used DistilBERT instead of full BERT, removed BatchNorm, GPU training
+5. **Data Processing**: Efficiently processed 500k+ reviews with memory optimization
+6. **Web Deployment**: Created user-friendly interfaces with Streamlit for both models
+7. **Labeling Enhancement**: Implemented 8 sophisticated categories for deceptive review detection
 
 ## Project Workflow Summary
 
-1. **Data Collection**: Download Yelp Academic Dataset
-2. **Preprocessing**: Extract features, apply labeling heuristics, balance dataset
-3. **Model Development**: Implement multi-modal and Random Forest architectures
-4. **Training**: Train both models with appropriate hyperparameters
-5. **Evaluation**: Assess performance using multiple metrics
-6. **Deployment**: Create Streamlit apps for real-time predictions
-7. **Version Control**: Push clean code to GitHub (excluding large model files)
+1. **Data Collection**: Download Yelp Academic Dataset (6.99M reviews, 1.99M users)
+2. **Preprocessing**: Load 500k reviews, extract 7 behavioral features, apply 8-category enhanced heuristics
+3. **Label Enhancement**: Increased deceptive samples from 0.18% to 28.38% (141,915 deceptive reviews)
+4. **Dataset Balancing**: Created balanced training set of 283,830 samples (equal deceptive/genuine)
+5. **Model Development**: Implemented multi-modal (DistilBERT + behavioral) and Random Forest architectures
+6. **Training**: Currently training multi-modal model on GPU with CUDA acceleration (2-6 hours expected)
+7. **Evaluation**: Assess performance using accuracy, precision, recall, F1-score, ROC-AUC, confusion matrix
+8. **Deployment**: Create Streamlit apps for real-time predictions with both models
+9. **Documentation**: Comprehensive reporting including dataset details, CUDA explanation, and technical specs
+10. **Version Control**: Push clean code to GitHub (excluding large model files)
+
+## Technical Specifications
+
+### Hardware Requirements
+- **GPU**: NVIDIA GPU with CUDA support (currently using for training)
+- **RAM**: Minimum 16GB, recommended 32GB+ for large datasets
+- **Storage**: 50GB+ for dataset and model files
+
+### Software Stack
+- **Python**: 3.8+
+- **PyTorch**: 2.0+ with CUDA support
+- **Transformers**: 4.0+ (Hugging Face)
+- **CUDA**: 11.8+ (NVIDIA GPU acceleration)
+- **Streamlit**: 1.0+ (web interfaces)
+
+### Performance Metrics
+- **Data Processing**: 500k reviews processed in ~5-10 minutes
+- **Labeling Efficiency**: 28.38% deceptive detection rate with enhanced heuristics
+- **Training Speed**: 2-6 hours for 283k samples on GPU (vs hours/days on CPU)
+- **Model Size**: ~500MB for multi-modal model (DistilBERT + custom layers)
 
 ## Learning Outcomes
 
 This project demonstrates:
-- **NLP Techniques**: Text preprocessing, embeddings, language models
-- **Deep Learning**: Neural networks, attention mechanisms, transfer learning
-- **Traditional ML**: Ensemble methods, feature importance
-- **Data Engineering**: Large-scale data processing, feature extraction
-- **Web Development**: Interactive applications with Streamlit
-- **MLOps**: Model training, evaluation, deployment
+- **NLP Techniques**: Text preprocessing, embeddings, language models, sentiment analysis
+- **Deep Learning**: Neural networks, attention mechanisms, transfer learning, CUDA acceleration
+- **Traditional ML**: Ensemble methods, feature importance, hyperparameter tuning
+- **Data Engineering**: Large-scale data processing, feature extraction, heuristic labeling
+- **Web Development**: Interactive applications with Streamlit, real-time predictions
+- **MLOps**: Model training, evaluation, deployment, GPU optimization
+- **Research Methods**: Academic dataset handling, experimental design, performance analysis
+
+## Current Status
+- ✅ Enhanced heuristics implemented (27.49% deceptive detection on 10k sample)
+- ✅ Dataset balanced (5,498 samples from 10k reviews for testing)
+- ✅ Multi-modal model successfully trained on GPU (83.64% accuracy, 92.49% ROC-AUC)
+- ✅ Random Forest model previously trained (72.25% accuracy)
+- ✅ Streamlit interfaces ready for deployment
+- ✅ Comprehensive documentation updated with latest results
+- ✅ Model metrics and training history saved
 
 ## Future Improvements
-- Increase dataset size for better generalization
-- Experiment with other language models (RoBERTa, XLNet)
-- Add more behavioral features (review timing patterns, etc.)
+- Increase dataset size to 1M+ reviews for better generalization
+- Experiment with other language models (RoBERTa, XLNet, ELECTRA)
+- Add temporal features (review timing patterns, burst detection)
 - Implement online learning for continuous model updates
-- Add explainability features to understand model decisions
+- Add explainability features (SHAP, LIME) to understand model decisions
+- Deploy models as REST APIs for production use
+- Add A/B testing framework for model comparison
+- Implement automated retraining pipelines
 
 ---
 
