@@ -1,0 +1,246 @@
+# Fake Review Detection Project - Comprehensive Report
+
+## Project Overview
+This project implements a fake review detection system using machine learning techniques. The goal is to identify deceptive online reviews that may be written by bots, paid reviewers, or competitors to manipulate public opinion. We use two different approaches: a multi-modal deep learning model and a traditional Random Forest classifier.
+
+## What is Fake Review Detection?
+Fake review detection is a type of natural language processing (NLP) and machine learning task where we analyze online reviews to determine if they are genuine (written by real customers) or deceptive (written with ulterior motives). This is important because fake reviews can mislead consumers and harm businesses.
+
+## Data Sources
+
+### Yelp Academic Dataset
+We use the Yelp Academic Dataset, which is a large collection of real-world data from Yelp.com containing:
+- **yelp_academic_dataset_review.json**: Contains millions of reviews with text, ratings (stars), dates, and user/business IDs
+- **yelp_academic_dataset_user.json**: Contains user profile information including review history, ratings, social connections, and status
+
+### Data Structure
+Each review in the dataset contains:
+- **text**: The actual review content
+- **stars**: Rating from 1-5 stars
+- **user_id**: Unique identifier for the reviewer
+- **business_id**: Unique identifier for the business
+- **date**: When the review was posted
+
+Each user profile contains:
+- **review_count**: Total number of reviews written
+- **average_stars**: User's average rating across all reviews
+- **elite**: Years the user had elite status (premium membership)
+- **friends**: List of friend user IDs
+- **fans**: Number of users who follow this user
+- **compliments**: Various types of compliments received (hot, funny, cool, etc.)
+
+## Data Preprocessing
+
+### Step 1: Loading Data
+We load a subset of 500,000 reviews from the review JSON file and all user data from the user JSON file.
+
+### Step 2: Feature Extraction
+We extract 7 behavioral features from the user data that help identify suspicious patterns:
+
+1. **user_review_count**: Total number of reviews written by this user (from user.review_count)
+2. **user_average_stars**: User's average star rating across all their reviews (from user.average_stars)
+3. **is_elite**: Binary feature - 1 if user has elite status, 0 otherwise (derived from user.elite field)
+4. **review_length**: Number of words in the current review text (calculated as len(text.split()))
+5. **user_friends**: Number of friends this user has on Yelp (length of user.friends array)
+6. **user_fans**: Number of fans/followers this user has (from user.fans)
+7. **user_compliment_count**: Total compliments received (sum of all compliment types from user data)
+
+### Step 3: Labeling Reviews
+We use heuristic rules to label reviews as deceptive or genuine:
+- Reviews with 1 or 5 stars AND less than 10 words are marked as deceptive
+- Reviews with 5 stars containing "best ever" are marked as deceptive
+- All other reviews are considered genuine
+
+### Step 4: Balancing Dataset
+We create a balanced dataset by sampling equal numbers of deceptive and genuine reviews to avoid bias in training.
+
+## Machine Learning Models
+
+### Model 1: Multi-Modal Deep Learning Model
+
+#### What is Multi-Modal Learning?
+Multi-modal learning combines information from different types of data sources. Here we combine:
+- **Text modality**: Review text processed by a language model
+- **Behavioral modality**: Numerical features about user behavior
+
+#### Architecture Details
+
+**Text Encoder (DistilBERT)**:
+- DistilBERT is a smaller, faster version of BERT (Bidirectional Encoder Representations from Transformers)
+- BERT is a pre-trained language model that understands context in text
+- DistilBERT converts review text into numerical vectors (embeddings) of 768 dimensions
+- We use mean pooling to get a single vector representation of the entire review
+
+**Behavioral Encoder**:
+- A neural network that processes the 7 numerical features
+- Architecture: Linear(7) → ReLU → Dropout(0.3) → Linear(256) → ReLU → Dropout(0.3)
+
+**Fusion Layer**:
+- Combines text embeddings (768 dims) + behavioral embeddings (256 dims) = 1024 dims total
+- Uses attention mechanism to learn which parts are more important
+- Final classifier: Linear layers with dropout and ReLU activation
+
+**Key Hyperparameters**:
+- Hidden dimension: 512
+- Learning rate: 2e-5
+- Batch size: 16
+- Dropout: 0.3-0.4
+- Activation: GELU (Gaussian Error Linear Unit)
+- No BatchNorm1d (removed for better performance)
+
+#### Training Process
+1. Load preprocessed dataset
+2. Split into train/validation sets (80/20)
+3. Initialize DistilBERT and custom layers
+4. Train for 30 epochs with early stopping (patience=3)
+5. Use Adam optimizer and binary cross-entropy loss
+6. Monitor validation accuracy and stop if no improvement
+
+### Model 2: Random Forest Classifier
+
+#### What is Random Forest?
+Random Forest is an ensemble learning method that combines multiple decision trees. Each tree votes on the prediction, and the majority vote wins.
+
+#### How it Works
+1. **Bootstrap Sampling**: Creates multiple subsets of the training data
+2. **Feature Randomness**: Each tree only sees a random subset of features
+3. **Voting**: Final prediction is the most common prediction across all trees
+
+#### Features Used
+The Random Forest uses 14 features:
+- **User-modifiable features** (11): stars, useful, funny, cool, user_review_count, user_average_stars, is_elite, review_length, user_friends, user_fans, user_compliment_count
+- **Derived features** (3): sentiment polarity, number of sentences, average word length
+
+#### Hyperparameters
+- Number of trees: 100
+- Maximum depth: None (trees can grow fully)
+- Minimum samples per leaf: 1
+- Random state: 42 (for reproducibility)
+
+## Model Training and Evaluation
+
+### Training Setup
+- **Multi-modal**: Trained on 1,822 balanced samples (911 deceptive + 911 genuine)
+- **Random Forest**: Trained on 5,638 samples
+- Both models use 80/20 train/validation split
+
+### Evaluation Metrics
+
+#### Accuracy
+- Percentage of correct predictions
+- Formula: (True Positives + True Negatives) / Total Samples
+
+#### Precision
+- Of all predicted positive cases, how many are actually positive
+- Formula: True Positives / (True Positives + False Positives)
+
+#### Recall (Sensitivity)
+- Of all actual positive cases, how many did we catch
+- Formula: True Positives / (True Positives + False Negatives)
+
+#### F1-Score
+- Harmonic mean of precision and recall
+- Formula: 2 * (Precision * Recall) / (Precision + Recall)
+
+#### ROC-AUC
+- Area Under the Receiver Operating Characteristic curve
+- Measures model's ability to distinguish between classes
+- Ranges from 0.5 (random) to 1.0 (perfect)
+
+#### Confusion Matrix
+A table showing:
+- True Positives (correctly identified deceptive)
+- True Negatives (correctly identified genuine)
+- False Positives (genuine marked as deceptive)
+- False Negatives (deceptive marked as genuine)
+
+### Training Results
+
+**Multi-Modal Model**:
+- Accuracy: 96.71%
+- ROC-AUC: 98.40%
+- Trained on CPU for ~4 hours
+- Early stopping triggered at epoch 4
+
+**Random Forest Model**:
+- Accuracy: 72.25%
+- ROC-AUC: 81.22%
+- Training time: ~2 minutes
+
+## Streamlit Web Applications
+
+### Multi-Modal App (app.py)
+- Runs on http://localhost:8501
+- Input: Review text + 7 behavioral feature sliders
+- Output: Prediction probability + model metrics display
+- Uses the trained multi-modal model for real-time predictions
+
+### Random Forest App (rf_app.py)
+- Runs on different port (e.g., 8502)
+- Input: Review text + 11 behavioral feature sliders
+- Output: Prediction + feature importance visualization
+- Uses the trained Random Forest model
+
+### How Apps Work
+1. User enters review text and adjusts feature sliders
+2. App preprocesses input (tokenizes text, scales features)
+3. Model makes prediction
+4. Results displayed with confidence scores and metrics
+
+## Technical Implementation Details
+
+### Dependencies
+- **torch**: PyTorch deep learning framework
+- **transformers**: Hugging Face library for pre-trained models
+- **streamlit**: Web app framework
+- **pandas**: Data manipulation
+- **numpy**: Numerical computing
+- **sklearn**: Machine learning utilities
+- **json**: Data serialization
+
+### File Structure
+- **data_preprocessing_yelp.py**: Data loading and feature extraction
+- **multi_modal_model.py**: Multi-modal model architecture and training
+- **random_forest_model.py**: Random Forest implementation
+- **prediction.py**: Prediction functions for both models
+- **app.py**: Multi-modal Streamlit interface
+- **rf_app.py**: Random Forest Streamlit interface
+- **train_multi_modal.py**: Training script for multi-modal model
+
+### Key Challenges Solved
+1. **Class Imbalance**: Used balanced sampling to ensure equal deceptive/genuine reviews
+2. **Feature Engineering**: Extracted meaningful behavioral features from user profiles
+3. **Model Architecture**: Designed attention-based fusion for multi-modal learning
+4. **Performance Optimization**: Used DistilBERT instead of full BERT, removed BatchNorm
+5. **Web Deployment**: Created user-friendly interfaces with Streamlit
+
+## Project Workflow Summary
+
+1. **Data Collection**: Download Yelp Academic Dataset
+2. **Preprocessing**: Extract features, apply labeling heuristics, balance dataset
+3. **Model Development**: Implement multi-modal and Random Forest architectures
+4. **Training**: Train both models with appropriate hyperparameters
+5. **Evaluation**: Assess performance using multiple metrics
+6. **Deployment**: Create Streamlit apps for real-time predictions
+7. **Version Control**: Push clean code to GitHub (excluding large model files)
+
+## Learning Outcomes
+
+This project demonstrates:
+- **NLP Techniques**: Text preprocessing, embeddings, language models
+- **Deep Learning**: Neural networks, attention mechanisms, transfer learning
+- **Traditional ML**: Ensemble methods, feature importance
+- **Data Engineering**: Large-scale data processing, feature extraction
+- **Web Development**: Interactive applications with Streamlit
+- **MLOps**: Model training, evaluation, deployment
+
+## Future Improvements
+- Increase dataset size for better generalization
+- Experiment with other language models (RoBERTa, XLNet)
+- Add more behavioral features (review timing patterns, etc.)
+- Implement online learning for continuous model updates
+- Add explainability features to understand model decisions
+
+---
+
+This report provides a complete overview of the fake review detection project, from data collection to deployment. All technical terms are explained, and the step-by-step process is detailed to help with presentations and Q&A sessions.

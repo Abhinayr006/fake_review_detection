@@ -7,6 +7,7 @@ DATA_PATH_YELP_USER = '/home/tondamanati-abhinay/Sem 7/SLP/Project/fake_review_d
 
 if __name__ == "__main__":
     print("Loading Yelp data...")
-    df = load_yelp_data(DATA_PATH_YELP_REVIEW, DATA_PATH_YELP_USER, num_reviews=500000)
+    # Increased from 500,000 to 2,000,000 reviews for better model training
+    df = load_yelp_data(DATA_PATH_YELP_REVIEW, DATA_PATH_YELP_USER, num_reviews=2000000)
     print(f"Data loaded: {len(df)} samples")
     train_multi_modal_model(df)

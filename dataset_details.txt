@@ -1,0 +1,42 @@
+# Yelp Academic Dataset Details
+
+## Overview
+The Yelp Academic Dataset is a large collection of real-world data from Yelp.com used for fake review detection research. It contains business reviews, user profiles, and other related information.
+
+## Data Files
+- **yelp_academic_dataset_review.json**: Contains review data
+- **yelp_academic_dataset_user.json**: Contains user profile information
+
+## Dataset Statistics
+- Total review records: 6,990,280
+- Total user records: 1,987,897
+
+## Review Data Structure
+Each review entry contains:
+- **text**: The actual review content
+- **stars**: Rating from 1-5 stars
+- **user_id**: Unique identifier for the reviewer
+- **business_id**: Unique identifier for the business
+- **date**: When the review was posted
+- **useful**: Number of users who found the review useful
+- **funny**: Number of users who found the review funny
+- **cool**: Number of users who found the review cool
+
+## User Data Structure
+Each user profile contains:
+- **user_id**: Unique user identifier
+- **review_count**: Total number of reviews written by this user
+- **average_stars**: User's average star rating across all reviews
+- **elite**: Years the user had elite status (premium membership)
+- **friends**: List of friend user IDs
+- **fans**: Number of users who follow this user
+- **compliments**: Various types of compliments received (hot, funny, cool, etc.)
+
+## Usage in Project
+- In data preprocessing, we load a subset of 500,000 reviews initially
+- After merging with user data and applying filtering, we end up with approximately 1,822 balanced samples for training
+- Features extracted include behavioral metrics like user review count, average stars, elite status, review length, friends count, fans count, and compliment count
+- Reviews are labeled as deceptive or genuine using heuristic rules based on star ratings, review length, and specific phrases
+
+## Data Source
+The dataset is publicly available from Yelp for academic and research purposes. It represents a snapshot of Yelp data as of a certain date (typically around 2018-2019 for the academic dataset).
