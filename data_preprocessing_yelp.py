@@ -60,6 +60,16 @@ def load_yelp_data(review_path, user_path, num_reviews=1000000):
     df.drop(columns=['user_features', 'user_id', 'business_id', 'review_id'], inplace=True)
 
     # --- Enhanced Heuristic for Labeling (does not use training features) ---
+    # New 8 categories added to increase deceptive samples from ~900 to ~30,000-40,000 out of 500k reviews:
+    # Category 1: Suspiciously Repetitive or Extreme Language (e.g., "awesome", "amazing" with high stars)
+    # Category 2: Excessive Use of First-Person or Over-Promotion (e.g., "trust me", "guaranteed" with high stars)
+    # Category 3: Very Short or Overly Generic Text (e.g., <5 words or generic words like "good")
+    # Category 4: Time-Based Pattern (duplicate reviews on same date with same text)
+    # Category 5: Unnatural Punctuation or Capitalization (e.g., "!!!" or all caps)
+    # Category 6: Neutral or Negative Sentiment with High Stars (sentiment < 0 and stars >= 4)
+    # Category 7: Overly Negative or Aggressive Language with Low Stars (e.g., "worst", "terrible" with stars <= 2)
+    # Category 8: Extreme Repetition or Keyword Stuffing (count of good/best/bad/worst > 5, any rating)
+    # Optional Genuine Reinforcement: Mark as genuine if len > 50 and sentiment > 0.2 and 2 <= stars <= 4
     df['deceptive'] = 0
 
     # Original rules
@@ -89,6 +99,16 @@ def load_yelp_data(review_path, user_path, num_reviews=1000000):
     # Category 6 — Neutral or Negative Sentiment with High Stars
     df['sentiment'] = df['text'].apply(lambda x: TextBlob(x).sentiment.polarity)
     df.loc[(df['sentiment'] < 0) & (df['stars'] >= 4), 'deceptive'] = 1
+
+    # Category 7 — Overly Negative or Aggressive Language with Low Stars
+    negative_words = ["worst", "terrible", "trash", "never buy", "fake", "scam", "waste"]
+    df.loc[df['text'].str.lower().apply(lambda x: any(word in x for word in negative_words)) & (df['stars'] <= 2), 'deceptive'] = 1
+
+    # Category 8 — Extreme Repetition or Keyword Stuffing (any rating)
+    df.loc[df['text'].apply(lambda x: len(re.findall(r'\b(good|best|bad|worst)\b', x.lower())) > 5), 'deceptive'] = 1
+
+    # Optional Genuine Reinforcement
+    df.loc[(df['review_length'] > 50) & (df['sentiment'] > 0.2) & (df['stars'].between(2, 4)), 'deceptive'] = 0
 
     # Drop temporary columns
     df.drop(columns=['date', 'sentiment'], inplace=True)
