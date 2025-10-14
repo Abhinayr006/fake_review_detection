@@ -8,7 +8,7 @@ from textblob import TextBlob
 DATA_PATH_YELP_REVIEW = '/home/tondamanati-abhinay/Sem 7/SLP/Project/fake_review_detection/data/yelp_json/Yelp-JSON/Yelp JSON/yelp_dataset/yelp_academic_dataset_review.json'
 DATA_PATH_YELP_USER = '/home/tondamanati-abhinay/Sem 7/SLP/Project/fake_review_detection/data/yelp_json/Yelp-JSON/Yelp JSON/yelp_dataset/yelp_academic_dataset_user.json'
 
-def count_labels_before_balancing(review_path, user_path, num_reviews=500000):
+def count_labels_before_balancing(review_path, user_path, num_reviews=100000):
     """
     Count deceptive and genuine labels before balancing.
     """
