@@ -102,7 +102,7 @@ class MultiModalTrainer:
 
         # Learning rate scheduler
         self.scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
-            self.optimizer, mode='max', factor=0.5, patience=2
+            self.optimizer, mode='max', factor=0.7, patience=3
         )
 
     def train_epoch(self, train_loader, epoch):
@@ -182,7 +182,7 @@ class MultiModalTrainer:
             'logits': all_logits
         }
 
-    def train(self, train_loader, test_loader, num_epochs=10, patience=3):
+    def train(self, train_loader, test_loader, num_epochs=10, patience=5):
         """Full training loop with early stopping."""
         print("Starting multi-modal model training...")
         print(f"Training on {self.device}")
