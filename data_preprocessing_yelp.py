@@ -4,6 +4,7 @@ import pandas as pd
 import json
 import numpy as np
 import re
+from textblob import TextBlob
 
 def load_yelp_data(review_path, user_path, num_reviews=1000000):
     """
@@ -53,12 +54,44 @@ def load_yelp_data(review_path, user_path, num_reviews=1000000):
     df['user_fans'] = df['user_features'].apply(lambda x: x['user_fans'])  # Number of fans the user has (from user.json)
     df['user_compliment_count'] = df['user_features'].apply(lambda x: x['user_compliment_count'])  # Total compliments received (sum of all compliment types from user.json)
     
-    df.drop(columns=['user_features', 'user_id', 'business_id', 'date', 'review_id'], inplace=True)
-    
-    # --- New Heuristic for Labeling (does not use training features) ---
+    # Keep date for time-based pattern detection
+    df['date'] = df['date']  # Keep date column for time-based heuristics
+
+    df.drop(columns=['user_features', 'user_id', 'business_id', 'review_id'], inplace=True)
+
+    # --- Enhanced Heuristic for Labeling (does not use training features) ---
     df['deceptive'] = 0
+
+    # Original rules
     df.loc[(df['stars'].isin([1, 5])) & (df['review_length'] < 10), 'deceptive'] = 1
     df.loc[df['text'].str.contains('best ever', case=False) & (df['stars'] == 5), 'deceptive'] = 1
+
+    # Category 1 — Suspiciously Repetitive or Extreme Language
+    extreme_words = ["awesome", "amazing", "perfect", "love it so much", "highly recommend", "must buy again"]
+    df.loc[df['text'].str.lower().apply(lambda x: any(word in x for word in extreme_words)) & (df['stars'] >= 4), 'deceptive'] = 1
+
+    # Category 2 — Excessive Use of First-Person or Over-Promotion
+    promo_words = ["i am a big fan", "trust me", "guaranteed", "don't miss this", "best brand"]
+    df.loc[df['text'].str.lower().apply(lambda x: any(word in x for word in promo_words)) & (df['stars'] >= 4), 'deceptive'] = 1
+
+    # Category 3 — Very Short or Overly Generic Text
+    df.loc[(df['review_length'] < 5) | (df['text'].str.lower().isin(["good", "nice", "great", "ok"])), 'deceptive'] = 1
+
+    # Category 4 — Time-Based Pattern (same date and exact same text)
+    duplicate_groups = df.groupby(['date', 'text']).size()
+    duplicate_reviews = duplicate_groups[duplicate_groups > 1].index
+    for date, text in duplicate_reviews:
+        df.loc[(df['date'] == date) & (df['text'] == text), 'deceptive'] = 1
+
+    # Category 5 — Unnatural Punctuation or Capitalization
+    df.loc[(df['text'].str.contains('!!!')) | (df['text'] == df['text'].str.upper()), 'deceptive'] = 1
+
+    # Category 6 — Neutral or Negative Sentiment with High Stars
+    df['sentiment'] = df['text'].apply(lambda x: TextBlob(x).sentiment.polarity)
+    df.loc[(df['sentiment'] < 0) & (df['stars'] >= 4), 'deceptive'] = 1
+
+    # Drop temporary columns
+    df.drop(columns=['date', 'sentiment'], inplace=True)
     
     df_deceptive = df[df['deceptive'] == 1]
     df_genuine = df[df['deceptive'] == 0]

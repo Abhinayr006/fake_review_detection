@@ -10,4 +10,5 @@ wordcloud
 transformers
 torch
 datasets
+textblob
 # Removed pickle5 due to build errors on Python 3.12
