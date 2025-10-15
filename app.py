@@ -113,7 +113,7 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 st.markdown('<div class="main-header">Fake Review Detector 🕵️‍♀️</div>', unsafe_allow_html=True)
-st.markdown('<div class="sub-header">Powered by Multi-Modal Deep Learning Model</div>', unsafe_allow_html=True)
+st.markdown('<div class="sub-header">Powered by DistilBERT Multi-Modal Model (87.24% Accuracy)</div>', unsafe_allow_html=True)
 
 # Single page with all inputs and metrics
 st.markdown("### Enter Review Details for Prediction")
